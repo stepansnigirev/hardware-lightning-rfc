@@ -16,20 +16,30 @@ Any HSM request for on-chain or off-chain transaction should provide all necessa
 
 When openning the channel we need to make sure that:
 
-- one of the two public keys of the multisig transaction are our own
-- the other public key corresponds to the node we are opening channel with
+- one of the two public keys of the multisig transaction is our own
+- the other public key corresponds to the node we are opening a channel with
 
 On-chain public key of the other node is different from the node public key, so we need to provide a proof that one of public keys is actually a public key of the second node.
 
 For unsigned transactions format we can use [PSBT](https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki) that supports additional fields we can utilize for lightning-specific purposes. We can include a proof of the other node's public key in additional fields of the PSBT.
 
-### Channel updates
+Data sent to the HSM in PSBT form:
+
+- raw unsigned transaction
+- key derivation path for signing
+- key derivation path for change address
+- script for multisig address we are funding
+- proof that the second pubkey is from node we are opening channel to
+
+## Channel updates and routing
+
+### Direct payments
 
 Storing all channel secrets on the HSM device doesn't make sense as hardware wallets normally have very limited resources and memory. Instead we can encrypt secrets on the HSM and pass encrypted data to the lightning node to store them in the database.
 
 **TODO: careful!** we need to keep track of the channel state updates somehow to prevent compromized node to broadcast previous state of the channel. Then we lose all the money. Unilateral close tx MUST stay on the hardware device.
 
-### Hops
+### Routing
 
 **TODO: careful!** If HSM is not aware of the channel being closed unilaterely by the other party it can be fooled and lose money providing a route between two nodes.
 **TODO:** describe attack in mode details.

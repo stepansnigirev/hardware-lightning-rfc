@@ -10,9 +10,9 @@ Currently none of hardware wallets support Lightning Network and none of Lightni
 
 ## Architecture
 
-All the secrets controlling the funds of the lightning node should be stored on the secure device. Lightning node setted up to work with HSM should not be able to do anything with the funds without talking to HSM. It includes funding, closing and commitment transactions. Secrets used for communication and channel announcements may be stored on the node itself to provide watch-only functionality. Storing `node_key` on the host has certain side-effects that we address in the [Appendix 1](#appendix-a-sideffects-from-keeping-the-node_key-on-the-host), but still can be used in some cases.
+All the secrets controlling the funds of the lightning node should be stored on the secure device. Lightning node setted up to work with HSM should not be able to do anything with the funds without talking to HSM. It includes funding, closing and commitment transactions. Secrets used for communication and channel announcements may be stored on the node itself to provide watch-only functionality. Storing `node_key` on the host has certain side-effects that we address in the [Appendix A](#appendix-a-sideffects-from-keeping-the-node_key-on-the-host), but still can be used in some cases.
 
-Any request to the HSM should provide all necessary information such that it can decide whether to ask for user confirmation or not. If user interaction is required HSM should be able to display everything to convince the user that the action he requested is what he sees on the screen.
+Any request to the HSM should provide all necessary information such that it can decide whether to ask for user confirmation or not. If user interaction is required HSM should be able to display everything to convince the user that the action he requested is what will actually happen.
 
 In the description below we consider that our host (lightning node) is completely compromized. In the next sections we describe general overview of the data requirements for different types of requests.
 
@@ -20,7 +20,7 @@ In most cases we just need to sign a transactions. [PSBT](https://github.com/bit
 
 ## Opening a channel
 
-When we are opening a channel we need to check two things:
+When we are opening a channel we need to check three things:
 
 - channel amount is correct
 - channel output is a 2-of-2 multisignature address with two keys
@@ -37,7 +37,7 @@ Host interaction with the HSM then splits into steps:
 - HSM sends txid to the host and waits for the signed commitment transaction
 - Host gets the signed commitment transaction from the remote node and sends it to HSM
 - In return HSM sends to the host a signed funding transaction to broadcast
-- When funding transaction gets into blockchain Host provides a proof of inclusion to the block
+- When funding transaction gets into blockchain Host provides a proof of inclusion in the block
 - HSM starts accepting channel updates only after it gets this proof.
 
 ## Channel updates and routing
@@ -49,6 +49,12 @@ Storing all channel secrets and commitment transactions on the HSM device doesn'
 If HSM is not aware of the channel being closed unilaterely by the other party it can be fooled and lose money providing a route between two nodes with one of the channels closed.
 
 To prevent this HSM should check this either with another remote watchtower or by checking all blocks. We can require from the host to provide block headers with txids and run it through the filter to determine whether this block contains unilateral closing transactions.
+
+## Blockchain data
+
+Many lightning transactions (HTLC, commitment) have timelocks. This means that HSM should track the blockchain height and time somehow. The easiest way is to include real-time-clock to the hardware design and require the host to send all the block headers to the HSM. If the host delays the blocks it can be determined by comparing the timestamps in the blocks with the value of RTC on the HSM. It should not differ from current time by more than 2 hours.
+
+HSM can check the blocks for old states, funding and unilateral closing transactions to make sure that HSM is aware of current channel states. It doesn't need a full block for that - index of txids included in the block would be enough.
 
 ## Appendix A. Sideffects from keeping the `node_key` on the host
 
